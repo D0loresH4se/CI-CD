@@ -1,0 +1,51 @@
+---
+- name: Настройка веб-сервера Nginx и firewall
+  hosts: web_servers
+  become: yes  # Использовать sudo для выполнения команд
+  tasks:
+    - name: Установка Nginx
+      apt:
+        name: nginx
+        state: present
+      when: ansible_os_family == "Debian"  # Для Debian/Ubuntu
+
+    - name: Установка Nginx
+      yum:
+        name: nginx
+        state: present
+      when: ansible_os_family == "RedHat"  # Для CentOS/RHEL
+
+    - name: Настройка firewall для открытия портов
+      ufw:
+        rule: allow
+        name: "{{ item }}"
+      loop:
+        - ssh  # Порт 22
+        - '80/tcp'  # Порт 80
+        - '443/tcp'  # Порт 443
+      when: ansible_os_family == "Debian"
+
+    - name: Настройка firewall для открытия портов
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+      loop:
+        - ssh  # Порт 22
+        - http  # Порт 80
+        - https  # Порт 443
+      when: ansible_os_family == "RedHat"
+
+    - name: Запуск и включение Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Проверка состояния Nginx
+      command: systemctl status nginx
+      register: nginx_status
+
+    - name: Вывод состояния Nginx
+      debug:
+        var: nginx_status.stdout_lines
